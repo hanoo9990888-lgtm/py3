@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مختبر العزوم التفاعلي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .lever-transition {
+            transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .custom-range {
+            accent-color: #4f46e5;
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <!-- رأس الصفحة -->
+        <header class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                    <i data-lucide="scale" class="text-indigo-600"></i>
+                    المختبر التفاعلي: محصلة العزوم (قانون الروافع)
+                </h1>
+                <p class="text-slate-500 mt-1 text-center md:text-right">قم بإضافة القوى على مسافات مختلفة ولاحظ تأثيرها على حالة الاتزان.</p>
+            </div>
+            <button onclick="clearAll()" class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                تصفير المختبر
+            </button>
+        </header>
+
+        <!-- منطقة المحاكاة البصرية -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative h-96 flex flex-col justify-end pb-12">
+            
+            <!-- حالة الاتزان -->
+            <div id="status-badge" class="absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-bold text-lg flex items-center gap-2 shadow-sm transition-all duration-300 bg-green-100 text-green-700 border border-green-200">
+                متزن (محصلة العزوم = صفر)
+            </div>
+
+            <div class="relative w-full max-w-4xl mx-auto">
+                <!-- نقطة الارتكاز (المثلث) -->
+                <div class="absolute left-1/2 bottom-0 -translate-x-1/2 w-0 h-0 
+                    border-l-[30px] border-l-transparent 
+                    border-r-[30px] border-r-transparent 
+                    border-b-[50px] border-b-slate-700 z-10">
+                </div>
+                
+                <!-- القاعدة السفلية -->
+                <div class="absolute left-0 right-0 bottom-[-4px] h-1 bg-slate-300 rounded-full"></div>
+
+                <!-- الرافعة (المسطرة) -->
+                <div id="lever" class="absolute left-0 right-0 bottom-[50px] h-6 bg-amber-600 rounded-sm shadow-md lever-transition origin-center z-20 flex items-center">
+                    <!-- التدرجات ستضاف عبر JavaScript -->
+                    <div id="markings-container" class="relative w-full h-full"></div>
+                    <!-- القوى ستضاف هنا -->
+                    <div id="forces-container" class="absolute inset-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أدوات التحكم والحسابات -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- عمود إضافة قوة جديدة -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="plus" class="text-indigo-500 w-5 h-5"></i>
+                    إضافة قوة جديدة
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1" id="label-magnitude">
+                            مقدار القوة (نيوتن): 20 N
+                        </label>
+                        <input type="range" id="input-magnitude" min="5" max="100" step="5" value="20" class="w-full custom-range">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1" id="label-position">
+                            موقع القوة (متر): -3 m (يسار)
+                        </label>
+                        <input type="range" id="input-position" min="-5" max="5" step="1" value="-3" class="w-full custom-range">
+                        <div class="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>يسار (-5)</span>
+                            <span>المركز (0)</span>
+                            <span>يمين (5)</span>
+                        </div>
+                    </div>
+                    <button onclick="addForce()" class="w-full bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
+                        إضافة القوة للمختبر
+                    </button>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-sm font-bold text-slate-700 mb-2 border-b pb-2">القوى الحالية (<span id="force-count">0</span>)</h3>
+                    <div id="forces-list" class="space-y-2 max-h-32 overflow-y-auto pr-1 no-scrollbar">
+                        <!-- قائمة القوى ستظهر هنا -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- عمود الحسابات -->
+            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <!-- العزوم المعاكسة (يسار) -->
+                <div class="bg-blue-50 border border-blue-100 p-5 rounded-2xl flex flex-col">
+                    <div class="flex items-center gap-2 mb-3 text-blue-800">
+                        <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
+                        <h3 class="font-bold text-lg">عزوم عكس عقارب الساعة</h3>
+                    </div>
+                    <p class="text-sm text-blue-600 mb-4">القوى المؤثرة في الجانب الأيسر (τ₁)</p>
+                    
+                    <div id="ccw-list" class="flex-1 space-y-2 min-h-[80px]">
+                        <!-- حسابات اليسار -->
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-blue-200 flex justify-between items-center">
+                        <span class="font-medium text-blue-800">المجموع (τ₁):</span>
+                        <span id="ccw-total" class="text-xl font-black text-blue-700">0 N.m</span>
+                    </div>
+                </div>
+
+                <!-- العزوم الموافقة (يمين) -->
+                <div class="bg-rose-50 border border-rose-100 p-5 rounded-2xl flex flex-col">
+                    <div class="flex items-center gap-2 mb-3 text-rose-800">
+                        <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        <h3 class="font-bold text-lg">عزوم مع عقارب الساعة</h3>
+                    </div>
+                    <p class="text-sm text-rose-600 mb-4">القوى المؤثرة في الجانب الأيمن (τ₂)</p>
+                    
+                    <div id="cw-list" class="flex-1 space-y-2 min-h-[80px]">
+                        <!-- حسابات اليمين -->
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-rose-200 flex justify-between items-center">
+                        <span class="font-medium text-rose-800">المجموع (τ₂):</span>
+                        <span id="cw-total" class="text-xl font-black text-rose-700">0 N.m</span>
+                    </div>
+                </div>
+
+                <!-- صندوق المعادلة النهائية -->
+                <div class="sm:col-span-2 bg-slate-800 text-white p-5 rounded-2xl shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-700 p-3 rounded-xl text-indigo-400">
+                            <i data-lucide="info" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-slate-300 text-sm font-medium">شرط الاتزان: (Στ = 0)</h3>
+                            <div class="text-xl font-mono mt-1" id="equation-display">
+                                τ₁ = τ₂  <span class="text-slate-500 mx-2">➔</span> 0 = 0
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="final-status" class="px-6 py-3 rounded-xl font-bold text-lg text-center min-w-[200px] bg-green-500 text-white">
+                        الرافعة في حالة اتزان
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // الحالة العامة
+        let forces = [
+            { id: 1, magnitude: 20, position: -3 },
+            { id: 2, magnitude: 30, position: 2 }
+        ];
+
+        // تهيئة الأيقونات
+        lucide.createIcons();
+
+        // ربط عناصر واجهة المستخدم
+        const inputMag = document.getElementById('input-magnitude');
+        const inputPos = document.getElementById('input-position');
+        const labelMag = document.getElementById('label-magnitude');
+        const labelPos = document.getElementById('label-position');
+        const markingsContainer = document.getElementById('markings-container');
+        const forcesContainer = document.getElementById('forces-container');
+        const forcesList = document.getElementById('forces-list');
+        const ccwList = document.getElementById('ccw-list');
+        const cwList = document.getElementById('cw-list');
+        const ccwTotal = document.getElementById('ccw-total');
+        const cwTotal = document.getElementById('cw-total');
+        const equationDisplay = document.getElementById('equation-display');
+        const finalStatus = document.getElementById('final-status');
+        const statusBadge = document.getElementById('status-badge');
+        const lever = document.getElementById('lever');
+        const forceCount = document.getElementById('force-count');
+
+        // تحديث التسميات عند تغيير المدخلات
+        inputMag.addEventListener('input', () => {
+            labelMag.innerText = `مقدار القوة (نيوتن): ${inputMag.value} N`;
+        });
+
+        inputPos.addEventListener('input', () => {
+            const val = parseInt(inputPos.value);
+            const side = val === 0 ? '(المركز)' : val > 0 ? '(يمين)' : '(يسار)';
+            labelPos.innerText = `موقع القوة (متر): ${val} m ${side}`;
+        });
+
+        // إنشاء تدرجات المسطرة
+        function createMarkings() {
+            for (let i = -5; i <= 5; i++) {
+                const mark = document.createElement('div');
+                mark.className = "absolute h-full flex flex-col justify-between items-center";
+                mark.style.left = `${(i + 5) * 10}%`;
+                mark.style.transform = 'translateX(-50%)';
+                mark.innerHTML = `
+                    <div class="w-0.5 h-2 bg-amber-900/40"></div>
+                    <span class="text-[10px] font-bold text-amber-900 select-none">${Math.abs(i)}m</span>
+                    <div class="w-0.5 h-2 bg-amber-900/40"></div>
+                `;
+                markingsContainer.appendChild(mark);
+            }
+        }
+
+        // الحسابات والتحديث البصري
+        function updateLab() {
+            // 1. حساب العزوم
+            const ccwForces = forces.filter(f => f.position < 0);
+            const cwForces = forces.filter(f => f.position > 0);
+            
+            const ccwT = ccwForces.reduce((sum, f) => sum + (f.magnitude * Math.abs(f.position)), 0);
+            const cwT = cwForces.reduce((sum, f) => sum + (f.magnitude * f.position), 0);
+            
+            const netTorque = ccwT - cwT;
+            const isBalanced = ccwT === cwT;
+
+            // 2. تحديث الميلان
+            let rotation = 0;
+            if (netTorque > 0) rotation = -10;
+            else if (netTorque < 0) rotation = 10;
+            lever.style.transform = `rotate(${rotation}deg)`;
+
+            // 3. تحديث القوى على المسطرة
+            forcesContainer.innerHTML = '';
+            forces.forEach(f => {
+                const forceEl = document.createElement('div');
+                forceEl.className = "absolute flex flex-col items-center group cursor-default";
+                forceEl.style.left = `${(f.position + 5) * 10}%`;
+                forceEl.style.transform = 'translateX(-50%)';
+                forceEl.style.top = '100%';
+
+                const weightHeight = Math.min(Math.max(f.magnitude * 1.5, 30), 80);
+                
+                forceEl.innerHTML = `
+                    <div class="w-1 h-8 bg-slate-400 group-hover:bg-slate-600 transition-colors"></div>
+                    <div class="bg-indigo-600 text-white rounded-md shadow-lg flex items-center justify-center font-bold border-2 border-indigo-800 transition-transform hover:scale-110"
+                         style="width: 40px; height: ${weightHeight}px; font-size: 14px;"
+                         title="القوة: ${f.magnitude}N، المسافة: ${Math.abs(f.position)}m">
+                        ${f.magnitude}N
+                    </div>
+                `;
+                forcesContainer.appendChild(forceEl);
+            });
+
+            // 4. تحديث القائمة الجانبية
+            forcesList.innerHTML = '';
+            forceCount.innerText = forces.length;
+            if (forces.length === 0) {
+                forcesList.innerHTML = '<p class="text-sm text-slate-400 text-center py-2">لا توجد قوى مضافة</p>';
+            }
+            forces.forEach(f => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100 text-sm";
+                item.innerHTML = `
+                    <span class="font-medium text-slate-700">${f.magnitude}N @ ${f.position}m</span>
+                    <button onclick="removeForce(${f.id})" class="text-red-400 hover:text-red-600 p-1 bg-white rounded-md shadow-sm">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                forcesList.appendChild(item);
+            });
+
+            // 5. تحديث تفاصيل الحسابات
+            ccwList.innerHTML = ccwForces.length ? '' : '<div class="text-sm text-blue-400">لا يوجد قوى</div>';
+            ccwForces.forEach(f => {
+                ccwList.innerHTML += `
+                    <div class="flex justify-between text-sm bg-white/60 p-2 rounded text-blue-900">
+                        <span>${f.magnitude}N × ${Math.abs(f.position)}m</span>
+                        <span class="font-bold">${f.magnitude * Math.abs(f.position)} N.m</span>
+                    </div>
+                `;
+            });
+            ccwTotal.innerText = `${ccwT} N.m`;
+
+            cwList.innerHTML = cwForces.length ? '' : '<div class="text-sm text-rose-400">لا يوجد قوى</div>';
+            cwForces.forEach(f => {
+                cwList.innerHTML += `
+                    <div class="flex justify-between text-sm bg-white/60 p-2 rounded text-rose-900">
+                        <span>${f.magnitude}N × ${f.position}m</span>
+                        <span class="font-bold">${f.magnitude * f.position} N.m</span>
+                    </div>
+                `;
+            });
+            cwTotal.innerText = `${cwT} N.m`;
+
+            // 6. تحديث الحالة النهائية
+            equationDisplay.innerHTML = `τ₁ = τ₂ <span class="text-slate-500 mx-2">➔</span> ${ccwT} = ${cwT}`;
+            
+            if (isBalanced) {
+                finalStatus.innerText = 'الرافعة في حالة اتزان';
+                finalStatus.className = "px-6 py-3 rounded-xl font-bold text-lg text-center min-w-[200px] bg-green-500 text-white";
+                statusBadge.innerText = 'متزن (محصلة العزوم = صفر)';
+                statusBadge.className = "absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-bold text-lg flex items-center gap-2 shadow-sm transition-all duration-300 bg-green-100 text-green-700 border border-green-200";
+            } else {
+                finalStatus.innerText = 'الرافعة تدور (غير متزنة)';
+                finalStatus.className = "px-6 py-3 rounded-xl font-bold text-lg text-center min-w-[200px] bg-orange-500 text-white";
+                statusBadge.innerText = 'غير متزن (يوجد عزم دوران)';
+                statusBadge.className = "absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-bold text-lg flex items-center gap-2 shadow-sm transition-all duration-300 bg-orange-100 text-orange-700 border border-orange-200";
+            }
+
+            lucide.createIcons();
+        }
+
+        // الوظائف التفاعلية
+        window.addForce = function() {
+            const magnitude = parseFloat(inputMag.value);
+            const position = parseFloat(inputPos.value);
+            
+            forces.push({
+                id: Date.now(),
+                magnitude: magnitude,
+                position: position
+            });
+            
+            updateLab();
+        };
+
+        window.removeForce = function(id) {
+            forces = forces.filter(f => f.id !== id);
+            updateLab();
+        };
+
+        window.clearAll = function() {
+            forces = [];
+            updateLab();
+        };
+
+        // البدء الأولي
+        createMarkings();
+        updateLab();
+    </script>
+</body>
+</html>
